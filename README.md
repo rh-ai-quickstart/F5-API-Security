@@ -57,7 +57,7 @@ Arcades are a great way to showcase your quickstart before installation.
 -->
 
 ### Architecture diagrams
-
+![RAG System Architecture](docs/images/rag-architecture_F5XC.png)
 
 | Layer/Component | Technology | Purpose/Description |
 |-----------------|------------|---------------------|
