@@ -127,18 +127,69 @@ List minimum hardware requirements.
 Note: the 70B model is NOT required for initial testing of this example. The safety/shield model `Llama-Guard-3-8B` is also optional.
 
 ### Installation Steps
+## Installation Steps
 
-1. **Clone Repository**
+The following steps detail the deployment process used, involving cloning the repository, navigating to the deployment directory, and running the `deploy.sh` script, which handles Helm chart installation and project creation [1].
+
+### 1. Login to OpenShift
+
+Login to your OpenShift cluster using your token and server API endpoint [2].
 
 ```bash
-git clone https://github.com/rh-ai-quickstart/RAG
-```
-
-2. **Login to OpenShift**
-
-```bash
-oc login --server="<cluster-api-endpoint>" --token="sha256~XYZ"
-```
+oc login --token=<your_sha256_token> --server=<cluster-api-endpoint>
+(The deployment process observed logged into a cluster endpoint, e.g., https://api.gpu-ai.bd.f5.com:6443.)
+2. Clone Repository
+Clone the F5-API-Security repository:
+git clone https://github.com/rh-ai-quickstart/F5-API-Security
+3. Navigate to Deployment Directory
+Change directory into the cloned repository and then into the deploy folder:
+cd F5-API-Security
+cd deploy
+4. Configure and Deploy
+Execute the deployment script (deploy.sh). The script will check for the necessary configuration file (f5-ai-security-values.yaml) and create it from the example file if it is missing, prompting for configuration edits before final installation.
+./deploy.sh
+Initial Run Output (Configuration creation): If the values file is missing, the script will output the following and stop:
+Values file not found. Copying from example...
+Created /Users/Z.Ji/F5-API-Security/deploy/f5-ai-security-values.yaml
+Please edit this file to configure your deployment (API keys, model selection, etc.)
+You must edit the f5-ai-security-values.yaml configuration file before proceeding.
+Re-run Deployment (Installation): After configuration is complete, re-run the script. This process handles dependency updates, downloads required charts (like pgvector, llm-service, and llama-stack), creates the OpenShift project f5-ai-security, and installs the Helm chart.
+./deploy.sh
+Successful Installation Output: The successful deployment confirms the installation:
+NAME: f5-ai-security
+LAST DEPLOYED: Thu Nov 6 12:27:49 2025
+NAMESPACE: f5-ai-security
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+Deployment complete!
+Post-Deployment Verification (Optional)
+After deployment, the model endpoints can be verified using curl.
+Check Deployed Models (LlamaStack Endpoint)
+curl -sS http://llamastack-f5-ai-security.apps.gpu-ai.bd.f5.com/v1/models
+(Expected output shows available models.)
+Test Chat Completion (LlamaStack Endpoint)
+Test a basic completion query against the deployed LlamaStack service:
+curl -sS http://llamastack-f5-ai-security.apps.gpu-ai.bd.f5.com/v1/openai/v1/chat/completions \
+-H "Content-Type: application/json" \
+-d '{
+"model": "remote-llm/RedHatAI/Llama-3.2-1B-Instruct-quantized.w8a8",
+"messages": [{"role":"user","content":"Say hello in one sentence."}],
+"max_tokens": 64,
+"temperature": 0
+}' | jq
+(This test should result in a successful response from the model: "Hello, how can I assist you today?". )
+Test Chat Completion (Secured vLLM Endpoint)
+Test against the dedicated vLLM endpoint that is secured by F5 Distributed Cloud API Security:
+curl -sS http://vllm-quantized.volt.thebizdevops.net/v1/openai/v1/chat/completions \
+-H "Content-Type: application/json" \
+-d '{
+"model": "RedHatAI/Llama-3.2-1B-Instruct-quantized.w8a8",
+"messages": [{"role":"user","content":"Say hello in one sentence."}],
+"max_tokens": 64,
+"temperature": 0
+}' | jq
+(This test confirms the successful operation of the secured endpoint.)
 
 
 ### Delete
