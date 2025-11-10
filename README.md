@@ -29,11 +29,36 @@ SHORT DESCRIPTION will be extracted for publication.
 
 ## Table of contents
 
-<!-- Table of contents is optional, but recommended. 
+- [Securing Model Inference with F5 Distributed Cloud API Security](#securing-model-inference-with-f5-distributed-cloud-api-security)
+  - [Table of contents](#table-of-contents)
+  - [Detailed description](#detailed-description)
+    - [Architecture diagrams](#architecture-diagrams)
+  - [Requirements](#requirements)
+    - [Minimum hardware requirements](#minimum-hardware-requirements)
+    - [Minimum software requirements](#minimum-software-requirements)
+    - [Required user permissions](#required-user-permissions)
+  - [Deploy](#deploy)
+    - [Prerequisites](#prerequisites)
+    - [Supported Models](#supported-models)
+  - [Deploying the Quickstart Baseline (Step 1)](#deploying-the-quickstart-baseline-step-1)
+    - [Installation Steps](#installation-steps)
+      - [1. Login to OpenShift](#1-login-to-openshift)
+      - [2. Clone the Repository](#2-clone-the-repository)
+      - [3. Navigate to Deployment Directory](#3-navigate-to-deployment-directory)
+      - [4. Configure and Deploy](#4-configure-and-deploy)
+    - [Post-Deployment Verification (Optional)](#post-deployment-verification-optional)
+    - [#Check Deployed Models (LlamaStack Endpoint)](#check-deployed-models-llamastack-endpoint)
+      - [Test Chat Completion (LlamaStack Endpoint)](#test-chat-completion-llamastack-endpoint)
+      - [Test Chat Completion (Secured vLLM Endpoint)](#test-chat-completion-secured-vllm-endpoint)
+      - [Summary](#summary)
+  - [Next Steps: Deploying and Securing (Steps 2 \& 3)](#next-steps-deploying-and-securing-steps-2--3)
+    - [Step 2: Deploy F5 Distributed Cloud](#step-2-deploy-f5-distributed-cloud)
+    - [Step 3: Configure and Run Use Cases for F5 Distributed Cloud](#step-3-configure-and-run-use-cases-for-f5-distributed-cloud)
+    - [Delete](#delete)
+  - [References](#references)
+  - [Technical details](#technical-details)
+  - [Tags](#tags)
 
-REMEMBER: to remove this section if you don't use a TOC.
-
--->
 
 ## Detailed description
 
@@ -45,16 +70,6 @@ Key Components
 - F5 Distributed Cloud API Security – Provides LLM-aware threat detection, schema validation, and sensitive data redaction.
 - Integration Blueprint – Demonstrates secure model inference across hybrid environments
 
-
-### See it in action 
-
-<!-- 
-
-*This section is optional but recommended*
-
-Arcades are a great way to showcase your quickstart before installation.
-
--->
 
 ### Architecture diagrams
 ![RAG System Architecture](docs/images/rag-architecture_F5XC.png)
