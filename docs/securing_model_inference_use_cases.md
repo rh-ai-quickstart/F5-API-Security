@@ -282,11 +282,12 @@ This task demonstrates that without F5 XC rate limiting configured, the selected
 1. **Navigate to the Swagger URL:**  
    Open a browser tab and navigate to [http://vllm-quantized.volt.thebizdevops.net/docs](http://vllm-quantized.volt.thebizdevops.net/docs).
 2. **Access the Target Endpoint:**  
+
    Within the Swagger page, navigate and expand the selected endpoint (e.g., `/v1/inference/chat-completion`). Click **Try it out**.
    
 ![Swagger Chat](images/swagger_chat.png)
 
-1.  **Insert Payload**  
+3.  **Insert Payload**  
 
    Copy and paste the following JSON payload into the **Request body**.  
 
@@ -300,12 +301,12 @@ This task demonstrates that without F5 XC rate limiting configured, the selected
 ```
 > Replace `model` and other fields with the values required by your deployment if different.
 
-1. **Execute Rapid Requests:**  
+4. **Execute Rapid Requests:**  
    Click the **Execute** button repeatedly, simulating excessive requests (e.g., click Execute 10 or more times within 1 minute).
 
 ![Swagger Chat Execute](images/chat_execute.png)
 
-2. **Review Unmitigated Result:**  
+5. **Review Unmitigated Result:**  
    Observe the **Response Body** for each execution. Since no rate limiting is enforced, every request should be processed and return a `200 OK` status.
 
 📸 *[Insert Screen Capture of Unmitigated Swagger Response showing >10 successful 200 OK responses]*
