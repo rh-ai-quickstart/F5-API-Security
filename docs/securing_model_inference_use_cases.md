@@ -235,13 +235,6 @@ curl -X 'POST' 'http://vllm-quantized.volt.thebizdevops.net/v1/inference/chat-co
 
 ---
 
-*End of document.*
-
-
-
-
----
-
 ## 🧾 Use Case 2: Enforcing API Specification, Sensitive Data Detection, and Preventing Shadow APIs
 
 This use case enforces documented API access only and uses **API Discovery** for continuous visibility.
@@ -272,32 +265,104 @@ This use case enforces documented API access only and uses **API Discovery** for
 
 ---
 
-## ⚙️ Use Case 3: Mitigating Automated Attack Traffic and Excessive Requests (Bot/DDoS/Rate Limiting)
+## ⚙️Use Case 3: Preventing Denial of Service (DoS) Attacks via Rate Limiting
 
-This protects inference endpoints from resource exhaustion and denial of service.
+### Scenario
+An LLM inference endpoint, running on OpenShift AI and exposed at [http://vllm-quantized.volt.thebizdevops.net](http://vllm-quantized.volt.thebizdevops.net), experiences performance degradation due to a high volume of requests from a single client source, potentially caused by accidental loops or intentional abuse.  
+We will limit requests to a specific endpoint to **10 requests per client per minute**.
 
-### Task 3.1: Configure Bot Protection
+**Selected Endpoint for Rate Limiting:** `/v1/inference/chat-completion`  
+*(This is the specific LLM inference path targeted for protection.)*
 
-1. Edit LB → **Bot Protection → Enable → Configure**  
-2. Add App Endpoint:  
-   - Methods: PUT, POST  
-   - Path: `/api/v1/`  
-   - Mitigation: Block (403)  
-3. Save and Exit
+---
 
-### Task 3.2: Configure Rate Limiting and DDoS Protection
+### Task 3.1: Simulate Unmitigated Excessive Requests
+This task demonstrates that without F5 XC rate limiting configured, the selected LLM inference endpoint will accept an unlimited number of requests from a single client.
 
-1. Enable **IP Reputation:** categories – Spam, DoS, Proxy, Tor, Botnets  
-2. Configure **Rate Limiting:**  
-   - Number: `10` requests  
-   - Burst Multiplier: `5`  
-3. Enable **DDoS Protection:**  
-   - Add IP Source Rule → block `203.0.113.0/24`
+1. **Navigate to the Swagger URL:**  
+   Open a browser tab and navigate to [http://vllm-quantized.volt.thebizdevops.net/docs](http://vllm-quantized.volt.thebizdevops.net/docs).
+2. **Access the Target Endpoint:**  
+   Within the Swagger page, navigate and expand the selected endpoint (e.g., `/v1/inference/chat-completion`). Click **Try it out**.
+   
+![Swagger Chat](images/swagger_chat.png)
 
-### Task 3.3: Traffic Generation and Confirmation
+1.  **Insert Payload**  
 
-1. Simulate bot traffic using Test Tool or `ab` load tests  
-2. Before: traffic passes; after: blocked  
-3. Review **Security Dashboard → Bot Defense & DDoS Tabs** for analytics
+   Copy and paste the following JSON payload into the **Request body**.  
 
-📸 *[Insert Screenshot 5: Bot Defense Dashboard Showing Blocked Traffic]*
+```json
+{
+  "model_id": "RedHatAI/Llama-3.2-1B-Instruct-quantized.w8a8",
+  "messages": [
+    {"role": "user", "content": "Hello"}
+  ]
+}
+```
+> Replace `model` and other fields with the values required by your deployment if different.
+
+1. **Execute Rapid Requests:**  
+   Click the **Execute** button repeatedly, simulating excessive requests (e.g., click Execute 10 or more times within 1 minute).
+
+![Swagger Chat Execute](images/chat_execute.png)
+
+2. **Review Unmitigated Result:**  
+   Observe the **Response Body** for each execution. Since no rate limiting is enforced, every request should be processed and return a `200 OK` status.
+
+📸 *[Insert Screen Capture of Unmitigated Swagger Response showing >10 successful 200 OK responses]*
+
+---
+
+### Task 3.2: Configure Rate Limiting
+This task enables the **API Rate Limit** feature on the **F5 XC HTTP Load Balancer** to protect the selected vLLM inference endpoint.
+
+1. **Access Load Balancer Configuration:**  
+   In the F5 Distributed Cloud Console, navigate to **Web App & API Protection → Load Balancers → HTTP Load Balancers** under the *Manage* section.
+2. **Manage and Edit Configuration:**  
+   Locate the HTTP Load Balancer serving `vllm-quantized.volt.thebizdevops.net`. Click the three dots (…) in the *Action* column, then select **Manage Configuration → Edit Configuration**.
+3. **Navigate to Common Security Controls:**  
+   Using the left-hand navigation, click the **Common Security Controls** link.
+4. **Enable API Rate Limit:**  
+   Locate the **Rate Limiting** area and use the drop-down to select **API Rate Limit**.
+
+![API rate limit](images/API_rate_limit.png)
+
+5. **View and Configure:**  
+   In the expanded menu under API Rate Limit, click **View Configuration**. In the resulting window, under *API Endpoints*, click **Configure**.
+6. **Add Item:**  
+   Select **Add Item** within API Endpoints.
+7. **Select LLM Endpoint:**  
+   In the new configuration window, use the drop-down under **API Endpoint** and click **See Suggestions**. In the suggestion results, select the LLM inference endpoint (e.g., `/v1/inference/chat-completion`).
+8. **Define Threshold:**  
+   Update the configuration fields and click **Apply**:
+   - **Method List:** ANY  
+   - **Threshold:** 10  
+   - **Duration:** Minute  
+     *(This configuration will rate limit a client after making 10 requests within 1 minute.)*
+
+![API rate limit Endpoint](images/API_rate_limit_endpoint.png)
+
+9. **Apply and Save:**
+   - Review the API Endpoint rate limiting rule and click **Apply**.  
+   - Click **Apply** on the API Rate Limit page.  
+   - Navigate to **Other Settings** on the left, then click **Save and Exit** on the bottom right.
+
+📸 *[Insert Screen Capture of F5 XC Configuration showing the Rate Limit rule applied to the LLM endpoint with Threshold 10/Minute]*
+
+---
+
+### Task 3.3: Simulate Mitigated Excessive Requests
+This task verifies that the rate limiting policy is active and successfully blocks requests that exceed the defined threshold.
+
+1. **Return to Swagger UI:**  
+   Navigate to the API documentation URL (or refresh the page): [http://vllm-quantized.volt.thebizdevops.net/docs](http://vllm-quantized.volt.thebizdevops.net/docs).
+2. **Access the Target Endpoint:**  
+   Navigate and expand the rate-limited endpoint (e.g., `/v1/inference/chat-completion`) and click **Try it out**.
+3. **Execute Rapid Requests:**  
+   Click the **Execute** button more than 10 times within 1 minute.
+4. **Review Mitigated Result:**  
+   Observe the **Server Response Body** for each execution:
+   - Requests 1 through 10 should be processed successfully (`200 OK`).  
+   - Requests 11 and subsequent requests within that minute duration should be blocked (e.g., returning a `429 Too Many Requests` status or a comparable block message).
+
+📸 *[Insert Screen Capture of Mitigated Swagger Response showing the blocking status (e.g., 429 error) after the 10th request]*
+
