@@ -4,43 +4,9 @@ import os
 from datetime import datetime
 from typing import List, Dict, Any
 
-# Configure Streamlit page
-st.set_page_config(
-    page_title="Upload",
-    page_icon="📤",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Page config is now handled by app.py
 
-# Custom CSS for consistent sidebar width across all tabs
-st.markdown("""
-<style>
-    /* Target all possible sidebar containers with fixed width */
-    .css-1d391kg, .css-1lcbmhc, .css-17eq0hr, 
-    [data-testid="stSidebar"], [data-testid="stSidebar"] > div,
-    .stSidebar, .stSidebar > div,
-    section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div {
-        width: 500px !important;
-        min-width: 500px !important;
-        max-width: 500px !important;
-    }
-    
-    /* Keep main content area left-aligned, not centered */
-    .main .block-container {
-        max-width: none !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        margin-left: 0 !important;
-        margin-right: auto !important;
-    }
-    
-    /* Ensure text inputs in sidebar use full width */
-    .css-1d391kg .stTextInput > div > div > input,
-    section[data-testid="stSidebar"] .stTextInput > div > div > input {
-        width: 100% !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+# CSS is now handled centrally by app.py
 
 # Add the ingestion service to the path
 sys.path.append('/app/f5_security_ui')

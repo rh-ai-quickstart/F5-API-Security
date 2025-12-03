@@ -4,42 +4,9 @@ from datetime import datetime
 from modules.api import f5_security_api
 from modules.utils import get_vector_db_name
 
-st.set_page_config(
-    page_title="Settings",
-    page_icon="⚙️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Page config is now handled by app.py
 
-# Custom CSS for consistent fixed sidebar width across all tabs
-st.markdown("""
-<style>
-    /* Target all possible sidebar containers with fixed width */
-    .css-1d391kg, .css-1lcbmhc, .css-17eq0hr, 
-    [data-testid="stSidebar"], [data-testid="stSidebar"] > div,
-    .stSidebar, .stSidebar > div,
-    section[data-testid="stSidebar"], section[data-testid="stSidebar"] > div {
-        width: 500px !important;
-        min-width: 500px !important;
-        max-width: 500px !important;
-    }
-    
-    /* Keep main content area left-aligned, not centered */
-    .main .block-container {
-        max-width: none !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        margin-left: 0 !important;
-        margin-right: auto !important;
-    }
-    
-    /* Ensure text inputs in sidebar use full width */
-    .css-1d391kg .stTextInput > div > div > input,
-    section[data-testid="stSidebar"] .stTextInput > div > div > input {
-        width: 100% !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+# CSS is now handled centrally by app.py
 
 # Page header
 st.markdown("### ⚙️ Settings")
@@ -47,10 +14,9 @@ st.markdown("Configure your chat endpoint, model, and other application settings
 
 # Initialize session state variables
 if 'chat_endpoint' not in st.session_state:
-    from constants import DEFAULT_XC_URL
     default_endpoint = os.getenv(
         'DEFAULT_CHAT_ENDPOINT', 
-        DEFAULT_XC_URL
+        'http://vllm-quantized.volt.thebizdevops.net'
     )
     st.session_state.chat_endpoint = default_endpoint
 
@@ -95,17 +61,14 @@ def fetch_models_from_endpoint(endpoint: str):
                         model_ids.append(str(model))
                 
                 st.session_state.available_models = model_ids
-                st.session_state.selected_model = ""  # Clear selection to force auto-select first model
                 st.session_state.model_fetch_error = None
             else:
                 st.session_state.available_models = []
-                st.session_state.selected_model = ""  # Clear selection on error
                 st.session_state.model_fetch_error = result["error"]
                 st.error(f"❌ Failed to connect to {endpoint}: {result['error']}")
                 
     except Exception as e:
         st.session_state.available_models = []
-        st.session_state.selected_model = ""  # Clear selection on exception
         st.session_state.model_fetch_error = str(e)
         st.error(f"❌ Error fetching models: {str(e)}")
     finally:
@@ -115,6 +78,11 @@ def on_xc_url_change():
     """Callback function when XC URL changes."""
     new_endpoint = st.session_state.get("xc_url_input", "")
     if new_endpoint and new_endpoint != st.session_state.chat_endpoint:
+        # Clear current model selection when XC URL changes
+        st.session_state.selected_model = ""
+        # Clear available models to force fresh fetch
+        st.session_state.available_models = []
+        # Fetch models from new endpoint
         fetch_models_from_endpoint(new_endpoint)
         st.session_state.chat_endpoint = new_endpoint
 
@@ -131,7 +99,7 @@ if "text_input_value" not in st.session_state:
 new_endpoint = st.text_input(
     "XC URL",
     value=st.session_state.text_input_value,
-    help="Enter the LlamaStack endpoint URL:\n• http://llamastack:8321 (Local LlamaStack)\n• http://your-xc-endpoint.com (External LlamaStack)\n• https://your-f5-xc.com:8321 (F5 XC Proxy to LlamaStack)\n\nModels will be automatically fetched when you change the URL.",
+    help="Enter the LlamaStack endpoint URL:\n• http://vllm-quantized.volt.thebizdevops.net (External LlamaStack)\n• http://llamastack:8321 (Local LlamaStack)\n• https://your-f5-xc.com:8321 (F5 XC Proxy to LlamaStack)\n\nModels will be automatically fetched when you change the URL.",
     key="xc_url_input",
     on_change=on_xc_url_change
 )
@@ -142,56 +110,54 @@ if new_endpoint != st.session_state.text_input_value:
 
 # Auto-fetch models on page load if we haven't fetched them yet
 if not st.session_state.available_models and not st.session_state.models_loading:
+    # Auto-fetch models from XC URL endpoint
     if current_endpoint:
         fetch_models_from_endpoint(current_endpoint)
 
-# Test and Reset buttons for XC URL
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("🔄 Test", help="Test XC URL with selected model", type="primary", key="xc_url_test"):
-        if new_endpoint and st.session_state.get("selected_model"):
-            test_model = st.session_state.selected_model
-            with st.spinner(f"Testing {new_endpoint} with model {test_model}..."):
-                try:
-                    # Test the LlamaStack endpoint with the selected model
-                    llamastack_client = f5_security_api.get_llamastack_client(new_endpoint)
-                    
-                    # Test a simple chat completion
-                    response = llamastack_client.inference.chat_completion(
-                        model_id=test_model,
-                        messages=[{"role": "user", "content": "Hello"}],
-                        sampling_params={
-                            "temperature": 0.1,
-                            "max_tokens": 10
-                        }
-                    )
-                    
-                    # Extract response content
-                    if hasattr(response, 'completion_message') and hasattr(response.completion_message, 'content'):
-                        test_response = response.completion_message.content
-                    elif hasattr(response, 'content'):
-                        test_response = response.content
-                    else:
-                        test_response = str(response)
-                    
-                    # Store test results in session state and trigger dialog
-                    st.session_state.test_success = True
-                    st.session_state.test_endpoint = new_endpoint
-                    st.session_state.test_model = test_model
-                    st.session_state.test_response = test_response
-                    st.rerun()
-                    
-                except Exception as e:
-                    # Store test error in session state and trigger dialog
-                    st.session_state.test_success = False
-                    st.session_state.test_error = str(e)
-                    st.rerun()
-        else:
-            if not new_endpoint:
-                st.warning("⚠️ Please enter an XC URL to test")
-            if not st.session_state.get("selected_model"):
-                st.warning("⚠️ Please select a model from the dropdown to test")
+# Test button for XC URL
+if st.button("🔄 Test", help="Test XC URL with selected model", type="primary", key="xc_url_test"):
+    if new_endpoint and st.session_state.get("selected_model"):
+        test_model = st.session_state.selected_model
+        with st.spinner(f"Testing {new_endpoint} with model {test_model}..."):
+            try:
+                # Test the LlamaStack endpoint with the selected model
+                llamastack_client = f5_security_api.get_llamastack_client(new_endpoint)
+                
+                # Test a simple chat completion
+                response = llamastack_client.inference.chat_completion(
+                    model_id=test_model,
+                    messages=[{"role": "user", "content": "Hello"}],
+                    sampling_params={
+                        "temperature": 0.1,
+                        "max_tokens": 10
+                    }
+                )
+                
+                # Extract response content
+                if hasattr(response, 'completion_message') and hasattr(response.completion_message, 'content'):
+                    test_response = response.completion_message.content
+                elif hasattr(response, 'content'):
+                    test_response = response.content
+                else:
+                    test_response = str(response)
+                
+                # Store test results in session state and trigger dialog
+                st.session_state.test_success = True
+                st.session_state.test_endpoint = new_endpoint
+                st.session_state.test_model = test_model
+                st.session_state.test_response = test_response
+                st.rerun()
+                
+            except Exception as e:
+                # Store test error in session state and trigger dialog
+                st.session_state.test_success = False
+                st.session_state.test_error = str(e)
+                st.rerun()
+    else:
+        if not new_endpoint:
+            st.warning("⚠️ Please enter an XC URL to test")
+        if not st.session_state.get("selected_model"):
+            st.warning("⚠️ Please select a model from the dropdown to test")
 
 # Show test result dialogs based on session state
 if st.session_state.get("test_success") is True:
@@ -224,13 +190,6 @@ elif st.session_state.get("test_success") is False:
     
     show_test_error()
 
-with col2:
-    if st.button("🔄 Reset", help="Reset XC URL to current endpoint", key="xc_url_reset"):
-        # Reset the text input to match the current working endpoint
-        st.session_state.text_input_value = current_endpoint
-        st.success(f"✅ Reset XC URL to current endpoint: `{current_endpoint}`")
-        st.rerun()
-
 st.markdown("---")
 
 # Model Configuration
@@ -249,10 +208,12 @@ elif st.session_state.model_fetch_error:
 elif st.session_state.available_models:
     # Model dropdown with available models
     current_model = st.session_state.get("selected_model", "")
-    if current_model not in st.session_state.available_models and st.session_state.available_models:
-        # Auto-select first model if current selection is not available
-        current_model = st.session_state.available_models[0]
-        st.session_state.selected_model = current_model
+    
+    # Always auto-select first model if no valid selection or if current selection is not in available models
+    if not current_model or current_model not in st.session_state.available_models:
+        if st.session_state.available_models:
+            current_model = st.session_state.available_models[0]
+            st.session_state.selected_model = current_model
     
     selected_model = st.selectbox(
         "Model ID",
@@ -270,6 +231,39 @@ else:
     
     st.button("🔄 Fetch Models", on_click=fetch_models_button)
 
+# Model fetching is always from XC URL endpoint
+    
+    # Direct model fetch without triggering test dialogs
+    try:
+        # Get LlamaStack client and fetch models directly
+        client = f5_security_api.get_llamastack_client(endpoint)
+        models = client.models.list()
+        
+        # Extract model IDs from the models list
+        model_ids = []
+        for model in models:
+            if hasattr(model, 'identifier'):
+                model_ids.append(model.identifier)
+            elif hasattr(model, 'id'):
+                model_ids.append(model.id)
+            elif isinstance(model, dict):
+                model_ids.append(model.get('identifier') or model.get('id', 'unknown'))
+            else:
+                model_ids.append(str(model))
+        
+        st.session_state.available_models = model_ids
+        # Auto-select first model immediately when models are fetched
+        if model_ids:
+            st.session_state.selected_model = model_ids[0]
+        else:
+            st.session_state.selected_model = ""
+        st.session_state.model_fetch_error = None
+    except Exception as e:
+        st.session_state.available_models = []
+        st.session_state.selected_model = ""
+        st.session_state.model_fetch_error = str(e)
+    
+    st.rerun()
 
 st.markdown("---")
 
@@ -306,3 +300,5 @@ except Exception as e:
     if debug_mode:
         st.markdown("### ❌ Vector Database Error")
         st.error(f"Error listing vector databases: {str(e)}")
+
+# Settings configuration complete
