@@ -96,27 +96,8 @@ except Exception as e:
     selected_vector_dbs = []
 
 
-# System prompt for Demo Application
-system_prompt = """You are a helpful AI assistant for this demo application. You can help users with:
-
-🤖 **Application Features:**
-- Chat interface and conversation management
-- Document upload and RAG (Retrieval-Augmented Generation)
-- LLM endpoint configuration and testing
-- General questions about AI and machine learning
-
-🔒 **Security Context:**
-- This application is protected by F5 Distributed Cloud
-- F5 XC provides API security, rate limiting, and threat protection
-- The security layer is transparent to the application functionality
-
-📋 **How to Help:**
-- Answer questions about the uploaded documents (if any)
-- Explain application features and functionality
-- Provide general information on topics you're knowledgeable about
-- Help users understand how to use this demo application
-
-Be helpful, accurate, and conversational. If you don't know something, say so clearly."""
+# System prompt
+system_prompt = "You are a helpful AI assistant."
 
 # Display chat messages
 for message in st.session_state.messages:
@@ -261,41 +242,25 @@ def direct_process_prompt(prompt, model, selected_vector_dbs, system_prompt, tem
     
     # Step 2: Construct Enhanced Prompt with Context
     if prompt_context:
-        f5_enhanced_prompt = f"""As an F5 API Security expert, please answer the following query using the provided F5 documentation context.
+        enhanced_prompt = f"""Please answer the following query using the provided documentation context.
 
-CONTEXT FROM F5 DOCUMENTATION:
+CONTEXT FROM DOCUMENTATION:
 {prompt_context}
 
 QUERY:
 {prompt}
 
-📋 INSTRUCTIONS:
-- Use the provided F5 documentation context to inform your response
-- Focus on API security best practices from F5 products
-- Provide actionable F5 security recommendations based on the documentation
-- Include specific F5 product capabilities mentioned in the context
-- Reference threat mitigation strategies from the documentation
-- Emphasize enterprise-grade F5 security solutions"""
+Please provide a comprehensive answer based on the context above."""
     else:
-        f5_enhanced_prompt = f"""As an F5 API Security expert, please provide comprehensive guidance on:
-
-{prompt}
-
-📋 INSTRUCTIONS:
-- Focus on API security best practices
-- Consider OWASP API Security Top 10
-- Provide actionable F5 security recommendations
-- Include threat mitigation strategies
-- Reference F5 products and capabilities when relevant
-- Emphasize enterprise-grade security solutions"""
+        enhanced_prompt = f"""{prompt}"""
 
     # Debug: Log the constructed enhanced prompt
     debug_events_list.append({
         "type": "enhanced_prompt_construction",
         "timestamp": datetime.now().isoformat(),
         "has_rag_context": bool(prompt_context),
-        "prompt_length": len(f5_enhanced_prompt),
-        "enhanced_prompt": f5_enhanced_prompt[:500] + "..." if len(f5_enhanced_prompt) > 500 else f5_enhanced_prompt
+        "prompt_length": len(enhanced_prompt),
+        "enhanced_prompt": enhanced_prompt[:500] + "..." if len(enhanced_prompt) > 500 else enhanced_prompt
     })
 
     with st.chat_message("assistant"):
@@ -303,9 +268,9 @@ QUERY:
         full_response = ""
         
         try:
-            f5_messages = [
+            messages = [
                 {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': f5_enhanced_prompt}
+                {'role': 'user', 'content': enhanced_prompt}
             ]
             
             # Show spinner while waiting for LLM response
@@ -328,7 +293,7 @@ QUERY:
                 
                 response = llamastack_client.inference.chat_completion(
                     model_id=model,
-                    messages=f5_messages,
+                    messages=messages,
                     sampling_params={
                         "temperature": temperature,
                         "max_tokens": max_tokens,
